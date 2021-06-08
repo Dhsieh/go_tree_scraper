@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 
 	"github.com/Dhsieh/tree_scraper/data"
 	"github.com/gocolly/colly"
@@ -114,10 +115,14 @@ func (b BingScraper) downloadImage(url, dir string, counter int) {
 	c.Visit(url)
 }
 
-// Change this to read from a channel, so as oto parralelize it.
-func (b BingScraper) ScrapeAllTrees() {
-	for _, tree := range b.treeJsonMap {
+func (b BingScraper) ScrapeTree(in <-chan data.TreeJson, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	for {
+		tree, ok := <-in
+		if !ok {
+			break
+		}
 		b.ScrapeImages(tree)
 	}
-
 }

@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/Dhsieh/tree_scraper/data"
 	"github.com/gocolly/colly"
@@ -127,8 +128,15 @@ func (f ForestryImageScraper) downloadImageUrl(url, name string, index int) {
 	c.Visit(url)
 }
 
-func (f ForestryImageScraper) ScrapeAllTrees() {
-	for _, tree := range f.treeJsonMap {
+func (f ForestryImageScraper) ScrapeTrees(in <-chan data.TreeJson, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	for {
+		tree, ok := <-in
+		if !ok {
+			break
+		}
+
 		f.ScrapeImages(tree)
 	}
 }
