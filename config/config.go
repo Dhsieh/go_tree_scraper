@@ -7,10 +7,18 @@ import (
 	"github.com/Dhsieh/tree_scraper/scraper/forestryimages"
 )
 
+// All configuration options
+// Site: 			string      which website to scrape, creates a specific scraper for that website
+// Species: 		[]string    list of a species' common names to scrape from the Site
+// DownloadPath: 	String  	folder to scrape and download the images to
+// Images: 			int 		number of images to scrape per species
+// NumRoutines: 	int 	 	number of Go routines to create
 type Configuration struct {
 	Site         string
 	Species      []string
 	DownloadPath string
+	Images       int
+	NumRoutines  int
 }
 
 func (c Configuration) getFullPath() string {
@@ -23,6 +31,7 @@ func (c Configuration) GetScraper(jsonPath string) scraper.Scraper {
 		return forestryscraper.CreateScraper(c.getFullPath(), Setup(jsonPath))
 	} else {
 		fmt.Println("Scraping bing")
-		return bingscraper.CreateScraper(c.getFullPath(), Setup(jsonPath))
+		bing := bingscraper.CreateScraper(c.getFullPath(), Setup(jsonPath), c.Images)
+		return bing
 	}
 }

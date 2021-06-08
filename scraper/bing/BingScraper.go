@@ -10,24 +10,37 @@ import (
 	"github.com/gocolly/colly"
 )
 
+// Create a BingScraper struct
 func Setup(downloadPath string) *BingScraper {
 	newDownloadPath := fmt.Sprintf("%s/bing", downloadPath)
 	return &BingScraper{downloadPath: newDownloadPath, counter: 0}
 }
 
-func CreateScraper(path string, jsonMap map[string]data.TreeJson) BingScraper {
-	return BingScraper{downloadPath: path, treeJsonMap: jsonMap, counter: 0}
+func CreateScraper(path string, jsonMap map[string]data.TreeJson, images int) BingScraper {
+	return BingScraper{downloadPath: path, treeJsonMap: jsonMap, images: images, counter: 0}
 }
 
+// Scraper to scrape images from bing
+// downloadPath: 	string 						path to save the images
+// treeJsonMap: 	map[string]data.TreeJson 	map containing all the species to download
+// images: 			int 						number of images to scrape per species
+// numRoutines: 	int 						number of go routines to create
+// counter: 		int 						way to track number of images saved
 type BingScraper struct {
 	downloadPath string
 	treeJsonMap  map[string]data.TreeJson
+	images       int
+	numRoutines  int
 	counter      int
 }
 
+// Function that will find images for a tree and download them
 func (b BingScraper) ScrapeImages(treeData data.TreeJson) {
+	fmt.Printf("Number of images is %d\n", b.images)
 	c := colly.NewCollector()
 
+	//Prepare the bing url which uses + instead of spaces
+	// Using the scientific name to make sure that the images are the most relevant
 	tree := treeData.ScientificName
 	preparedTree := strings.ReplaceAll(tree, " ", "+")
 	url := fmt.Sprintf(bingPhotoUrl, preparedTree)
@@ -36,6 +49,7 @@ func (b BingScraper) ScrapeImages(treeData data.TreeJson) {
 	var urls []string
 	alreadyScrapedCount := 0
 
+	// Don't scrape any images that could be found in the forestryscraper as to not duplicated images
 	c.OnHTML("li", func(e *colly.HTMLElement) {
 		t := e.ChildAttr("a", "m")
 		var result map[string]interface{}
@@ -54,6 +68,7 @@ func (b BingScraper) ScrapeImages(treeData data.TreeJson) {
 	c.Visit(url)
 	fmt.Printf("Already scraped %d elements\n", alreadyScrapedCount)
 
+	// Create directory to save the images to
 	treeName := strings.ReplaceAll(treeData.ScientificName, " ", "_")
 	treeName = strings.ReplaceAll(treeName, "/", "_")
 	dirName := fmt.Sprintf("%s/%s", b.downloadPath, treeName)
@@ -63,21 +78,27 @@ func (b BingScraper) ScrapeImages(treeData data.TreeJson) {
 		os.MkdirAll(dirName, os.ModePerm)
 	}
 
-	if len(urls) >= 5 {
-		b.downloadImages(urls, dirName)
+	// Only scrape the specified number of images
+	if len(urls) >= b.images {
+		fmt.Printf("Downloaded %d images\n", b.images)
+		b.downloadImages(urls[0:b.images], dirName)
 	} else {
-		fmt.Printf("Could not find 5 images for %s", tree)
+		fmt.Printf("Could not find %d images for %s", b.images, tree)
 	}
 }
 
+// This could also be changed to use channels and go routines
+// Given a list of bing urls, download images from it.
+// use counter to give each image a unique name.
 func (b BingScraper) downloadImages(urls []string, dir string) {
-	counter := 0
+	counter := b.counter
 	for _, url := range urls {
 		b.downloadImage(url, dir, counter)
 		counter++
 	}
 }
 
+// Download an image from a url, and the name of the resulting image will be based on the counter
 func (b BingScraper) downloadImage(url, dir string, counter int) {
 	c := colly.NewCollector()
 
@@ -93,6 +114,7 @@ func (b BingScraper) downloadImage(url, dir string, counter int) {
 	c.Visit(url)
 }
 
+// Change this to read from a channel, so as oto parralelize it.
 func (b BingScraper) ScrapeAllTrees() {
 	for _, tree := range b.treeJsonMap {
 		b.ScrapeImages(tree)

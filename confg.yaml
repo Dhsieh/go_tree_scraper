@@ -1,3 +1,5 @@
 Site:   "bing"
 Species: ["apple"]
 DownloadPath: "../test"
+Images: 5
+NumRoutines: 5

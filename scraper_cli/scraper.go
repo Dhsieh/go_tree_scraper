@@ -40,10 +40,10 @@ func main() {
 			siteScraper.ScrapeAllTrees()
 		} else {
 			for _, treeSpecies := range configuration.Species {
-				fmt.Println(treeSpecies)
 				if treeData, ok := treeJsonMap[treeSpecies]; !ok {
 					fmt.Printf("Could not find tree species for common name: %s\n", treeSpecies)
 				} else {
+					fmt.Printf("Scraing %s\n", treeSpecies)
 					siteScraper.ScrapeImages(treeData)
 				}
 			}
