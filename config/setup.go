@@ -7,6 +7,7 @@ import (
 	"github.com/Dhsieh/tree_scraper/data"
 )
 
+// Creates the map of all tree species from a file
 func Setup(filename string) map[string]data.TreeJson {
 	dat, err := ioutil.ReadFile(filename)
 	if err != nil {

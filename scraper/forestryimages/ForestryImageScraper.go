@@ -12,6 +12,7 @@ import (
 	"github.com/gocolly/colly"
 )
 
+// Save to json file
 func downloadJson(treeData *data.TreeResponse) {
 	data, _ := json.MarshalIndent(treeData, "", " ")
 	filePath := "../downloads/tree_data.json"
@@ -32,6 +33,7 @@ func downloadJson(treeData *data.TreeResponse) {
 	}
 }
 
+// Downloads all trees from forestryscraper
 func DownloadAllTreeSpecies() {
 	fmt.Println("Downloading Conifers")
 	treeResponses := getSpecies(coniferTreeListUrl, "confier")
@@ -44,6 +46,7 @@ func DownloadAllTreeSpecies() {
 	downloadJson(&treeResponses)
 }
 
+// Gets all the trees from a url
 func getSpecies(url, treeType string) data.TreeResponse {
 	c := colly.NewCollector()
 
@@ -66,6 +69,7 @@ type ForestryImageScraper struct {
 	downloadPath string
 }
 
+// Scrapes images from forestryimage
 func (f ForestryImageScraper) ScrapeImages(treeData data.TreeJson) {
 	tree := treeData.CommonName
 	treeJson, ok := f.treeJsonMap[tree]
@@ -94,6 +98,7 @@ func (f ForestryImageScraper) ScrapeImages(treeData data.TreeJson) {
 
 }
 
+// Return a list of urls to download images from
 func (f ForestryImageScraper) getImageUrls(imageResponseStruct *data.ImageResponse) []string {
 	imageUrlList := make([]string, 0)
 	for _, imageMap := range imageResponseStruct.Rows {
@@ -104,9 +109,11 @@ func (f ForestryImageScraper) getImageUrls(imageResponseStruct *data.ImageRespon
 	return imageUrlList
 }
 
+// Downloads the image from the url
 func (f ForestryImageScraper) downloadImageUrl(url, name string, index int) {
 	c := colly.NewCollector()
 
+	// "clean string" and create the directory to store the image
 	name = strings.ReplaceAll(name, " ", "_")
 	name = strings.ReplaceAll(name, "/", "-")
 	dir := fmt.Sprintf("%s/%s", f.downloadPath, name)
@@ -118,6 +125,7 @@ func (f ForestryImageScraper) downloadImageUrl(url, name string, index int) {
 		}
 	}
 
+	// Save the image
 	c.OnResponse(func(r *colly.Response) {
 		fileName := fmt.Sprintf("%s/%s/%d.jpg", f.downloadPath, name, index)
 		err := r.Save(fileName)
@@ -136,7 +144,6 @@ func (f ForestryImageScraper) ScrapeTree(in <-chan data.TreeJson, wg *sync.WaitG
 		if !ok {
 			break
 		}
-
 		f.ScrapeImages(tree)
 	}
 }
