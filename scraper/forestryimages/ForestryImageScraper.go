@@ -128,7 +128,7 @@ func (f ForestryImageScraper) downloadImageUrl(url, name string, index int) {
 	c.Visit(url)
 }
 
-func (f ForestryImageScraper) ScrapeTrees(in <-chan data.TreeJson, wg *sync.WaitGroup) {
+func (f ForestryImageScraper) ScrapeTree(in <-chan data.TreeJson, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	for {

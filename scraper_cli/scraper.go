@@ -52,11 +52,17 @@ func main() {
 		}
 
 		var treeList []data.TreeJson
+		emptyNameCounter := 0
 		// Create treeList from map or config
 		if *all {
 			fmt.Println("Scraping all trees")
 			for _, treeData := range treeJsonMap {
-				treeList = append(treeList, treeData)
+				if treeData.CommonName != "" {
+					treeList = append(treeList, treeData)
+				} else {
+					emptyNameCounter += 1
+				}
+
 			}
 		} else {
 			for _, treeSpecies := range configuration.Species {
@@ -74,6 +80,8 @@ func main() {
 
 		close(in)
 		workerGroup.Wait()
+
+		fmt.Printf("emptyNameCounter is %d\n", emptyNameCounter)
 	} else {
 		fmt.Errorf("Did not specify anything!")
 	}

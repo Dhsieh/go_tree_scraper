@@ -1,3 +1,6 @@
 downloads/
 test/
 .DS_Store
+# tags is a file for ctags
+tags
+

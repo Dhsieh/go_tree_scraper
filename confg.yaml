@@ -1,5 +1,5 @@
 Site:   "bing"
-Species: ["apple"]
+Species: ["apple", "Arizona pine", "Ashe juniper", "winged elm", "treedaisy", "tree limonium", "tree tobacco"]
 DownloadPath: "../test"
 Images: 5
 NumRoutines: 5
