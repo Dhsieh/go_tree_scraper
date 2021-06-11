@@ -3,4 +3,5 @@ test/
 .DS_Store
 # tags is a file for ctags
 tags
+scraper_cli/scraper_cli
 
