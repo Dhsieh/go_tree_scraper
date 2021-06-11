@@ -37,10 +37,10 @@ func downloadJson(treeData *data.TreeResponse) {
 func DownloadAllTreeSpecies() {
 	fmt.Println("Downloading Conifers")
 	treeResponses := getSpecies(coniferTreeListUrl, "confier")
+	fmt.Printf("Len of conifers is %d\n", len(treeResponses.Data))
 	fmt.Println("Downloading hardwood")
-	hardwoodSpecies := getSpecies(hardwoodtreeListUrl1, "deciduous")
-	treeResponses.Append(&hardwoodSpecies)
-	hardwoodSpecies = getSpecies(hardwoodtreeListUrl2, "deciduous")
+	hardwoodSpecies := getSpecies(hardwoodtreeListUrl, "deciduous")
+	fmt.Printf("Len of deciduous is %d\n", len(hardwoodSpecies.Data))
 	treeResponses.Append(&hardwoodSpecies)
 
 	downloadJson(&treeResponses)
