@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/Dhsieh/tree_scraper/data"
+	"github.com/Dhsieh/tree_scraper/utils"
 	"github.com/gocolly/colly"
 )
 
@@ -81,11 +82,35 @@ func (b BingScraper) ScrapeImages(treeData data.TreeJson) {
 
 	// Only scrape the specified number of images
 	if len(urls) >= b.images {
-		fmt.Printf("Downloaded %d images\n", b.images)
-		b.downloadImages(urls[0:b.images], dirName)
+		fmt.Printf("Downloading %d images\n", b.images)
+		b.downloadImages(b.checkUrls(urls, b.images), dirName)
 	} else {
 		fmt.Printf("Could not find %d images for %s", b.images, tree)
 	}
+}
+
+// Check if a url contains a JPEG file or not
+func (b BingScraper) isJPEG(url string) bool {
+	c := colly.NewCollector()
+
+	var check bool
+	c.OnResponse(func(r *colly.Response) {
+		check = utils.IsJPEG(r.Body)
+	})
+
+	c.Visit(url)
+	return check
+}
+
+// For the given urls, grab numImages urls that have valid jpeg
+func (b BingScraper) checkUrls(urls []string, numImages int) []string {
+	var validJPEGUrls []string
+	for i := 0; i < numImages; {
+		url := urls[i]
+		validJPEGUrls = append(validJPEGUrls, url)
+		i += 1
+	}
+	return validJPEGUrls
 }
 
 // This could also be changed to use channels and go routines
