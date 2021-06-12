@@ -33,6 +33,6 @@ func Setup(filename string) map[string]data.TreeJson {
 		}
 	}
 
-	fmt.Printf("Total of %d hybrids are ignored", hybridCounter)
+	fmt.Printf("Total of %d hybrids are ignored\n", hybridCounter)
 	return treeListMap
 }
