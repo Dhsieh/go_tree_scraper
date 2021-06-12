@@ -38,7 +38,6 @@ type BingScraper struct {
 
 // Function that will find images for a tree and download them
 func (b BingScraper) ScrapeImages(treeData data.TreeJson) {
-	fmt.Printf("Number of images is %d\n", b.images)
 	c := colly.NewCollector()
 
 	//Prepare the bing url which uses + instead of spaces
@@ -71,22 +70,29 @@ func (b BingScraper) ScrapeImages(treeData data.TreeJson) {
 	fmt.Printf("Already scraped %d elements\n", alreadyScrapedCount)
 
 	// Create directory to save the images to
+	if treeData.ScientificName == "" {
+		fmt.Printf("ScientificName not found for %s\n", treeData.CommonName)
+		return
+	}
+
 	treeName := strings.ReplaceAll(treeData.ScientificName, " ", "_")
 	treeName = strings.ReplaceAll(treeName, "/", "_")
 	dirName := fmt.Sprintf("%s/%s", b.downloadPath, treeName)
 	fmt.Println(dirName)
 	if _, err := os.Stat(dirName); os.IsNotExist(err) {
-		fmt.Printf("Directy %s was not created, creating it!\n", dirName)
-		os.MkdirAll(dirName, os.ModePerm)
+		fmt.Printf("Directory %s was not created, creating it!\n", dirName)
+		err := os.MkdirAll(dirName, os.ModePerm)
+		if err != nil {
+			fmt.Printf("Could not create directory %s\n", dirName)
+		}
+	} else {
+		fmt.Printf("Directory %s was already created!\n", dirName)
 	}
 
 	// Only scrape the specified number of images
-	if len(urls) >= b.images {
-		fmt.Printf("Downloading %d images\n", b.images)
-		b.downloadImages(b.checkUrls(urls, b.images), dirName)
-	} else {
-		fmt.Printf("Could not find %d images for %s", b.images, tree)
-	}
+	fmt.Printf("Downloading %d images into %s \n", b.images, dirName)
+
+	b.downloadImages(b.checkUrls(urls, b.images), dirName)
 }
 
 // Check if a url contains a JPEG file or not
@@ -105,7 +111,7 @@ func (b BingScraper) isJPEG(url string) bool {
 // For the given urls, grab numImages urls that have valid jpeg
 func (b BingScraper) checkUrls(urls []string, numImages int) []string {
 	var validJPEGUrls []string
-	for i := 0; i < numImages; {
+	for i := 0; i < numImages && i < len(urls); {
 		url := urls[i]
 		validJPEGUrls = append(validJPEGUrls, url)
 		i += 1
