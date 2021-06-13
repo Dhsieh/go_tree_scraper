@@ -99,22 +99,30 @@ func (b BingScraper) ScrapeImages(treeData data.TreeJson) {
 func (b BingScraper) isJPEG(url string) bool {
 	c := colly.NewCollector()
 
+	// bool to see if the url contains a valid jpeg image or not
 	var check bool
 	c.OnResponse(func(r *colly.Response) {
 		check = utils.IsJPEG(r.Body)
 	})
 
 	c.Visit(url)
+	if !check {
+		fmt.Printf("%s did not contain a jpg image!\n", url)
+	}
+
 	return check
 }
 
 // For the given urls, grab numImages urls that have valid jpeg
 func (b BingScraper) checkUrls(urls []string, numImages int) []string {
 	var validJPEGUrls []string
-	for i := 0; i < numImages && i < len(urls); {
+	counter := 0
+	for i := 0; counter < numImages && i < len(urls); i += 1 {
 		url := urls[i]
-		validJPEGUrls = append(validJPEGUrls, url)
-		i += 1
+		if b.isJPEG(url) {
+			validJPEGUrls = append(validJPEGUrls, url)
+			counter += 1
+		}
 	}
 	return validJPEGUrls
 }

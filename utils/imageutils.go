@@ -1,6 +1,9 @@
 package utils
 
-import "strings"
+import (
+	"net/http"
+	"strings"
+)
 
 var magicTable = map[string]string{
 	"\xff\xd8\xff":      "image/jpeg",
@@ -12,7 +15,7 @@ var magicTable = map[string]string{
 func IsJPEG(incipit []byte) bool {
 	iniciptStr := string(incipit)
 	jpgMime := magicTable["jpeg"]
-	if strings.HasPrefix(iniciptStr, jpgMime) {
+	if strings.HasPrefix(iniciptStr, jpgMime) && http.DetectContentType(incipit[:512]) == "image/jpeg" {
 		return true
 	} else {
 		return false

@@ -23,7 +23,6 @@ def check_images(s_dir, ext_list):
                 if os.path.isfile(f_path):
                     try:
                         img = cv2.imread(f_path)
-                        shape=img.shape
 
                         ext = imghdr.what(f_path)
                         if ext != 'jpeg' and ext != 'jpg' and ext != 'png':
