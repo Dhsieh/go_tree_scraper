@@ -12,6 +12,8 @@ var magicTable = map[string]string{
 	"GIF89a":            "image/gif",
 }
 
+// Check the []byte to see if the contents are JPEG or not
+// Does 2 different types of checks of the header
 func IsJPEG(incipit []byte) bool {
 	iniciptStr := string(incipit)
 	jpgMime := magicTable["jpeg"]

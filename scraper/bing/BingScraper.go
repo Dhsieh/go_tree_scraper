@@ -154,6 +154,7 @@ func (b BingScraper) downloadImage(url, dir string, counter int) {
 	c.Visit(url)
 }
 
+// Grab the first data.TreeJson from the in channel to scrape
 func (b BingScraper) ScrapeTree(in <-chan data.TreeJson, wg *sync.WaitGroup) {
 	defer wg.Done()
 
