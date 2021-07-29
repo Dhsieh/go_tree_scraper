@@ -77,6 +77,7 @@ func (b BingScraper) ScrapeImages(treeData data.TreeJson) {
 
 	treeName := strings.ReplaceAll(treeData.ScientificName, " ", "_")
 	treeName = strings.ReplaceAll(treeName, "/", "_")
+	treeName = strings.ReplaceAll(treeName, "-", "_")
 	dirName := fmt.Sprintf("%s/%s", b.downloadPath, treeName)
 	fmt.Println(dirName)
 	if _, err := os.Stat(dirName); os.IsNotExist(err) {

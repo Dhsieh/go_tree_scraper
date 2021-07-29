@@ -1,5 +1,5 @@
 Site:   "bing"
-Species: ["apple", "Arizona pine", "Ashe juniper", "winged elm", "treedaisy", "tree limonium", "tree tobacco"]
+Species: ["Pinus strobus", "Abies grandis", "Tsuga heterophylla", "Picea mariana", "Cedrus deodara", "Juniperus deppeana", "Cupressus arizonica", "Cedrus libani", "Picea omorika", "Pinus engelmannii", "Pinus halepensis", "Pinus nigra", "Abies balsamea", "Fraxinus excelsior", "Fraxinus ornus", "Fagus sylvatica", "Quercus lobata", "Quercus rubra", "Alnus glutinosa", "Alnus cordata", "Salix fragilis", "Salix babylonica", "Acer saccharum", "Acer saccharum", "Acer rubrum", "Acer platanoides"]
 DownloadPath: "../downloads"
 Images: 5
 NumRoutines: 10

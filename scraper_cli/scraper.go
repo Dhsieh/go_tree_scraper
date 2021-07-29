@@ -18,11 +18,11 @@ func main() {
 	all := flag.Bool("all", false, "download all tree species images or not")
 	info := flag.Bool("info", false, "Download all possible tree species into a json file")
 	check := flag.Bool("check", false, "Check config map")
-	conf := flag.Bool("conf", false, "Config to use")
+	conf := flag.String("conf", "", "Config to use")
 
 	flag.Parse()
 
-	viper.SetConfigName("confg")
+	viper.SetConfigName(*conf)
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath("../")
 	var configuration config.Configuration
@@ -32,7 +32,6 @@ func main() {
 		panic(err)
 	}
 
-	fmt.Println(*all)
 	viper.Unmarshal(&configuration)
 
 	var workerGroup sync.WaitGroup
@@ -43,7 +42,7 @@ func main() {
 	} else if *check {
 		treeJsonMap := config.Setup("../downloads/tree_data.json")
 		fmt.Printf("len of map is %d\n", len(treeJsonMap))
-	} else if *conf {
+	} else if *conf != "" {
 		treeJsonMap := config.Setup("../downloads/tree_data.json")
 		siteScraper := configuration.GetScraper("../downloads/tree_data.json")
 
