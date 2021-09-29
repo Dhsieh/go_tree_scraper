@@ -15,6 +15,7 @@ import (
 // NumRoutines: 	int 	 	number of Go routines to create
 type Configuration struct {
 	Site         string
+	Keyword      string
 	Species      []string
 	DownloadPath string
 	Images       int
@@ -31,7 +32,11 @@ func (c Configuration) GetScraper(jsonPath string) scraper.Scraper {
 		return forestryscraper.CreateScraper(c.getFullPath(), Setup(jsonPath))
 	} else {
 		fmt.Println("Scraping bing")
-		bing := bingscraper.CreateScraper(c.getFullPath(), Setup(jsonPath), c.Images)
+		bing := bingscraper.CreateScraper(c.getFullPath(), Setup(jsonPath), c.Images, c.NumRoutines)
 		return bing
 	}
+}
+
+func (c Configuration) String() string {
+	return fmt.Sprintf("Site: %s\nKeyword: %s\nSpecies: %s\nDownloadPath: %s\nImages: %d\nNumRoutines: %d\n", c.Site, c.Keyword, c.Species, c.DownloadPath, c.Images, c.NumRoutines)
 }
