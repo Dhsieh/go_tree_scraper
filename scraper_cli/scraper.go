@@ -17,7 +17,6 @@ func main() {
 	// conf contains certain configuration options as well as giving the option to scrape only a certain number of trees
 	all := flag.Bool("all", false, "download all tree species images or not")
 	info := flag.Bool("info", false, "Download all possible tree species into a json file")
-	check := flag.Bool("check", false, "Check config map")
 	conf := flag.String("conf", "", "Config to use")
 
 	flag.Parse()
@@ -39,17 +38,11 @@ func main() {
 	if *info {
 		fmt.Println("Downloaing all tree species information")
 		forestryscraper.DownloadAllTreeSpecies()
-	} else if *check {
-		treeJsonMap := config.Setup("../downloads/tree_data.json")
-		fmt.Printf("len of map is %d\n", len(treeJsonMap))
 	} else if *conf != "" {
-		treeJsonMap := config.Setup("../downloads/tree_data.json")
 		siteScraper := configuration.GetScraper("../downloads/tree_data.json")
 
-		if configuration.Species[0] == "tree" && len(configuration.Species) == 1 {
-			siteScraper.ScrapeImages(configuration.Species[0])
-		} else {
-			// Create extra space in the in chan
+		if configuration.Keyword == "" {
+			treeJsonMap := config.Setup("../downloads/tree_data.json")
 			in := make(chan data.TreeJson, configuration.NumRoutines*4)
 
 			for i := 0; i < configuration.NumRoutines; i++ {
@@ -89,7 +82,10 @@ func main() {
 
 			fmt.Printf("emptyNameCounter is %d\n", emptyNameCounter)
 
+		} else {
+			siteScraper.ScrapeImages(configuration.Keyword)
 		}
+
 	} else {
 		fmt.Errorf("Did not specify anything!")
 	}
