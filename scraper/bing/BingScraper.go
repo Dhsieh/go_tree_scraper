@@ -6,10 +6,12 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/Dhsieh/tree_scraper/data"
 	"github.com/Dhsieh/tree_scraper/utils"
 	"github.com/gocolly/colly"
+	"github.com/google/uuid"
 )
 
 // Create a BingScraper struct
@@ -18,8 +20,8 @@ func Setup(downloadPath string) *BingScraper {
 	return &BingScraper{downloadPath: newDownloadPath, counter: 0}
 }
 
-func CreateScraper(path string, jsonMap map[string]data.TreeJson, images int) BingScraper {
-	return BingScraper{downloadPath: path, treeJsonMap: jsonMap, images: images, counter: 0}
+func CreateScraper(path string, jsonMap map[string]data.TreeJson, images int, numRoutines int) BingScraper {
+	return BingScraper{downloadPath: path, treeJsonMap: jsonMap, images: images, counter: 0, numRoutines: numRoutines}
 }
 
 // Scraper to scrape images from bing
@@ -36,8 +38,53 @@ type BingScraper struct {
 	counter      int
 }
 
+func (b BingScraper) ScrapeImages(input interface{}) {
+	switch in := input.(type) {
+	case string:
+		fmt.Println("Scraping keyword!")
+		b.ScrapeKeyWordImages(in)
+	case data.TreeJson:
+		b.ScrapeTreeData(in)
+	default:
+		panic("Could not create a function for give type!")
+	}
+}
+
+func (b BingScraper) scrapeImages(url string) []string {
+	fmt.Printf("Scraping %s", url)
+	c := colly.NewCollector()
+	var urls []string
+
+	c.OnHTML("li", func(e *colly.HTMLElement) {
+		tag := e.ChildAttr("a", "m")
+		var result map[string]interface{}
+		json.Unmarshal([]byte(tag), &result)
+
+		murl, ok := result["murl"]
+		if ok {
+			urls = append(urls, murl.(string))
+		}
+	})
+
+	c.Visit(url)
+	return urls
+}
+
+// Function to scrape images of a keyword
+func (b BingScraper) ScrapeKeyWordImages(keyword string) {
+	url := fmt.Sprintf(bingKeywordPhotoUrl, keyword)
+	urls := b.scrapeImages(url)
+
+	dirName := fmt.Sprintf("%s/%s", b.downloadPath, "trees")
+	utils.CreateDirectory(dirName)
+
+	fmt.Printf("Downloading %d images into %s \n", b.images, dirName)
+
+	b.downloadImageList(urls, dirName)
+}
+
 // Function that will find images for a tree and download them
-func (b BingScraper) ScrapeImages(treeData data.TreeJson) {
+func (b BingScraper) ScrapeTreeData(treeData data.TreeJson) {
 	c := colly.NewCollector()
 
 	//Prepare the bing url which uses + instead of spaces
@@ -153,6 +200,51 @@ func (b BingScraper) downloadImage(url, dir string, counter int) {
 	})
 
 	c.Visit(url)
+}
+
+func (b BingScraper) downloadImageList(urls []string, dir string) {
+	var workerGroup sync.WaitGroup
+
+	in := make(chan string, b.numRoutines*4)
+
+	fmt.Printf("Num of rounites is %d", b.numRoutines)
+	for i := 0; i < b.numRoutines; i++ {
+		workerGroup.Add(1)
+		go download(in, dir, &workerGroup)
+	}
+
+	fmt.Printf("Going through %d urls\n", len(urls))
+	for _, url := range urls {
+		in <- url
+	}
+
+	close(in)
+	workerGroup.Wait()
+}
+
+func download(in <-chan string, dir string, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	for {
+		url, ok := <-in
+		if !ok {
+			break
+		}
+		c := colly.NewCollector()
+
+		c.OnResponse(func(r *colly.Response) {
+			date := time.Now().Format("2006_01_02")
+			id := uuid.New()
+			filePath := fmt.Sprintf("%s/%s_%s.jpg", dir, date, id.String())
+
+			err := r.Save(filePath)
+			if err != nil {
+				panic(err)
+			}
+		})
+
+		c.Visit(url)
+	}
 }
 
 // Grab the first data.TreeJson from the in channel to scrape

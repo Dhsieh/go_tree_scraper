@@ -7,6 +7,8 @@ import (
 )
 
 type Scraper interface {
-	ScrapeImages(treeData data.TreeJson)
+	ScrapeImages(input interface{})
+	ScrapeKeyWordImages(keyword string)
+	ScrapeTreeData(treeData data.TreeJson)
 	ScrapeTree(in <-chan data.TreeJson, wg *sync.WaitGroup)
 }

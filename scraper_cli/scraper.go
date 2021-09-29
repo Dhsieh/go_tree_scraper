@@ -46,45 +46,50 @@ func main() {
 		treeJsonMap := config.Setup("../downloads/tree_data.json")
 		siteScraper := configuration.GetScraper("../downloads/tree_data.json")
 
-		// Create extra space in the in chan
-		in := make(chan data.TreeJson, configuration.NumRoutines*4)
-
-		for i := 0; i < configuration.NumRoutines; i++ {
-			workerGroup.Add(1)
-			go siteScraper.ScrapeTree(in, &workerGroup)
-		}
-
-		var treeList []data.TreeJson
-		emptyNameCounter := 0
-		// Create treeList from map or config
-		if *all {
-			fmt.Println("Scraping all trees")
-			for _, treeData := range treeJsonMap {
-				if treeData.CommonName != "" {
-					treeList = append(treeList, treeData)
-				} else {
-					emptyNameCounter += 1
-				}
-
-			}
+		if configuration.Species[0] == "tree" && len(configuration.Species) == 1 {
+			siteScraper.ScrapeImages(configuration.Species[0])
 		} else {
-			for _, treeSpecies := range configuration.Species {
-				if treeData, ok := treeJsonMap[treeSpecies]; !ok {
-					fmt.Printf("Could not find tree species for common name: %s\n", treeSpecies)
-				} else {
-					treeList = append(treeList, treeData)
+			// Create extra space in the in chan
+			in := make(chan data.TreeJson, configuration.NumRoutines*4)
+
+			for i := 0; i < configuration.NumRoutines; i++ {
+				workerGroup.Add(1)
+				go siteScraper.ScrapeTree(in, &workerGroup)
+			}
+
+			var treeList []data.TreeJson
+			emptyNameCounter := 0
+			// Create treeList from map or config
+			if *all {
+				fmt.Println("Scraping all trees")
+				for _, treeData := range treeJsonMap {
+					if treeData.CommonName != "" {
+						treeList = append(treeList, treeData)
+					} else {
+						emptyNameCounter += 1
+					}
+
+				}
+			} else {
+				for _, treeSpecies := range configuration.Species {
+					if treeData, ok := treeJsonMap[treeSpecies]; !ok {
+						fmt.Printf("Could not find tree species for common name: %s\n", treeSpecies)
+					} else {
+						treeList = append(treeList, treeData)
+					}
 				}
 			}
+
+			for _, tree := range treeList {
+				in <- tree
+			}
+
+			close(in)
+			workerGroup.Wait()
+
+			fmt.Printf("emptyNameCounter is %d\n", emptyNameCounter)
+
 		}
-
-		for _, tree := range treeList {
-			in <- tree
-		}
-
-		close(in)
-		workerGroup.Wait()
-
-		fmt.Printf("emptyNameCounter is %d\n", emptyNameCounter)
 	} else {
 		fmt.Errorf("Did not specify anything!")
 	}

@@ -33,6 +33,10 @@ func downloadJson(treeData *data.TreeResponse) {
 	}
 }
 
+func (f ForestryImageScraper) ScrapeKeyWordImages(keyword string) {
+	fmt.Printf("This doesn't work with this type of scraper!")
+}
+
 // Downloads all trees from forestryscraper
 func DownloadAllTreeSpecies() {
 	fmt.Println("Downloading Conifers")
@@ -70,7 +74,7 @@ type ForestryImageScraper struct {
 }
 
 // Scrapes images from forestryimage
-func (f ForestryImageScraper) ScrapeImages(treeData data.TreeJson) {
+func (f ForestryImageScraper) ScrapeTreeData(treeData data.TreeJson) {
 	tree := treeData.CommonName
 	treeJson, ok := f.treeJsonMap[tree]
 	if !ok {
@@ -144,6 +148,10 @@ func (f ForestryImageScraper) ScrapeTree(in <-chan data.TreeJson, wg *sync.WaitG
 		if !ok {
 			break
 		}
-		f.ScrapeImages(tree)
+		f.ScrapeTreeData(tree)
 	}
+}
+
+func (f ForestryImageScraper) ScrapeImages(input interface{}) {
+	panic("does nothing right now!")
 }
