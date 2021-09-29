@@ -1,0 +1,5 @@
+Site:   "bing"
+Keyword: "tree"
+DownloadPath: "../downloads"
+Images: 40
+NumRoutines: 4
