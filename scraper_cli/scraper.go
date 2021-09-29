@@ -41,7 +41,7 @@ func main() {
 	} else if *conf != "" {
 		siteScraper := configuration.GetScraper("../downloads/tree_data.json")
 
-		if configuration.Keyword == "" {
+		if configuration.Keyword == "" && len(configuration.Species) > 0 {
 			treeJsonMap := config.Setup("../downloads/tree_data.json")
 			in := make(chan data.TreeJson, configuration.NumRoutines*4)
 
@@ -82,11 +82,13 @@ func main() {
 
 			fmt.Printf("emptyNameCounter is %d\n", emptyNameCounter)
 
-		} else {
+		} else if len(configuration.Species) == 0 && configuration.Keyword != "" {
 			siteScraper.ScrapeImages(configuration.Keyword)
+		} else {
+			panic(fmt.Errorf("Did not specify a keyword or a list of tree species!"))
 		}
 
 	} else {
-		fmt.Errorf("Did not specify anything!")
+		panic(fmt.Errorf("Did not specify anything!"))
 	}
 }
