@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"sync"
 
 	"github.com/Dhsieh/tree_scraper/config"
 	"github.com/Dhsieh/tree_scraper/data"
@@ -33,8 +32,6 @@ func main() {
 
 	viper.Unmarshal(&configuration)
 
-	var workerGroup sync.WaitGroup
-
 	if *info {
 		fmt.Println("Downloaing all tree species information")
 		forestryscraper.DownloadAllTreeSpecies()
@@ -43,12 +40,6 @@ func main() {
 
 		if configuration.Keyword == "" && len(configuration.Species) > 0 {
 			treeJsonMap := config.Setup("../downloads/tree_data.json")
-			in := make(chan data.TreeJson, configuration.NumRoutines*4)
-
-			for i := 0; i < configuration.NumRoutines; i++ {
-				workerGroup.Add(1)
-				go siteScraper.ScrapeTree(in, &workerGroup)
-			}
 
 			var treeList []data.TreeJson
 			emptyNameCounter := 0
@@ -73,13 +64,7 @@ func main() {
 				}
 			}
 
-			for _, tree := range treeList {
-				in <- tree
-			}
-
-			close(in)
-			workerGroup.Wait()
-
+			siteScraper.ScrapeImages(treeList)
 			fmt.Printf("emptyNameCounter is %d\n", emptyNameCounter)
 
 		} else if len(configuration.Species) == 0 && configuration.Keyword != "" {

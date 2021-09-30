@@ -73,6 +73,10 @@ type ForestryImageScraper struct {
 	downloadPath string
 }
 
+func (f ForestryImageScraper) ScrapeTreeDatas(treeSlice []data.TreeJson) {
+	fmt.Println("Does nothing!")
+}
+
 // Scrapes images from forestryimage
 func (f ForestryImageScraper) ScrapeTreeData(treeData data.TreeJson) {
 	tree := treeData.CommonName
@@ -138,18 +142,6 @@ func (f ForestryImageScraper) downloadImageUrl(url, name string, index int) {
 		}
 	})
 	c.Visit(url)
-}
-
-func (f ForestryImageScraper) ScrapeTree(in <-chan data.TreeJson, wg *sync.WaitGroup) {
-	defer wg.Done()
-
-	for {
-		tree, ok := <-in
-		if !ok {
-			break
-		}
-		f.ScrapeTreeData(tree)
-	}
 }
 
 func (f ForestryImageScraper) ScrapeImages(input interface{}) {
