@@ -10,6 +10,32 @@ import (
 	"github.com/spf13/viper"
 )
 
+// Create Tree Slice depending on config.
+func createTreeSlice(all bool, treeJsonMap map[string]data.TreeJson, configuration config.Configuration) []data.TreeJson {
+	var treeSlice []data.TreeJson
+	counter := 0
+	if all {
+		for _, treeData := range treeJsonMap {
+			if treeData.CommonName != "" {
+				treeSlice = append(treeSlice, treeData)
+			} else {
+				counter++
+			}
+		}
+		fmt.Printf("There are %d empty common names", counter)
+	} else {
+		for _, treeSpecies := range configuration.Species {
+			if treeData, ok := treeJsonMap[treeSpecies]; !ok {
+				counter++
+			} else {
+				treeSlice = append(treeSlice, treeData)
+			}
+		}
+	}
+
+	return treeSlice
+}
+
 func main() {
 	// all downloads all the tree species in tree_data.json
 	// info creates tree_data.json
@@ -40,33 +66,8 @@ func main() {
 
 		if configuration.Keyword == "" && len(configuration.Species) > 0 {
 			treeJsonMap := config.Setup("../downloads/tree_data.json")
-
-			var treeList []data.TreeJson
-			emptyNameCounter := 0
-			// Create treeList from map or config
-			if *all {
-				fmt.Println("Scraping all trees")
-				for _, treeData := range treeJsonMap {
-					if treeData.CommonName != "" {
-						treeList = append(treeList, treeData)
-					} else {
-						emptyNameCounter += 1
-					}
-
-				}
-			} else {
-				for _, treeSpecies := range configuration.Species {
-					if treeData, ok := treeJsonMap[treeSpecies]; !ok {
-						fmt.Printf("Could not find tree species for common name: %s\n", treeSpecies)
-					} else {
-						treeList = append(treeList, treeData)
-					}
-				}
-			}
-
-			siteScraper.ScrapeImages(treeList)
-			fmt.Printf("emptyNameCounter is %d\n", emptyNameCounter)
-
+			treeSlice := createTreeSlice(*all, treeJsonMap, configuration)
+			siteScraper.ScrapeImages(treeSlice)
 		} else if len(configuration.Species) == 0 && configuration.Keyword != "" {
 			siteScraper.ScrapeImages(configuration.Keyword)
 		} else {

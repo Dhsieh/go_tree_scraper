@@ -6,7 +6,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"sync"
 
 	"github.com/Dhsieh/tree_scraper/data"
 	"github.com/gocolly/colly"
@@ -33,7 +32,7 @@ func downloadJson(treeData *data.TreeResponse) {
 	}
 }
 
-func (f ForestryImageScraper) ScrapeKeyWordImages(keyword string) {
+func (f ForestryImageScraper) ScrapeKeywordImages(keyword string) {
 	fmt.Printf("This doesn't work with this type of scraper!")
 }
 

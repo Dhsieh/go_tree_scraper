@@ -1,5 +1,5 @@
 Site:   "bing"
 Keyword: "tree"
-DownloadPath: "../downloads"
+DownloadPath: "derek_hsieh_ml"
 Images: 50
 NumRoutines: 4

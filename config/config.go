@@ -37,6 +37,10 @@ func (c Configuration) GetScraper(jsonPath string) scraper.Scraper {
 	}
 }
 
+func (c Configuration) CreateBingScraper() bingscraper.BingScraper {
+	return bingscraper.CreateScraper(c.DownloadPath, nil, c.Images, c.NumRoutines)
+}
+
 func (c Configuration) String() string {
 	return fmt.Sprintf("Site: %s\nKeyword: %s\nSpecies: %s\nDownloadPath: %s\nImages: %d\nNumRoutines: %d\n", c.Site, c.Keyword, c.Species, c.DownloadPath, c.Images, c.NumRoutines)
 }

@@ -6,6 +6,6 @@ import (
 
 type Scraper interface {
 	ScrapeImages(input interface{})
-	ScrapeKeyWordImages(keyword string)
+	ScrapeKeywordImages(keyword string)
 	ScrapeTreeDatas(treeData []data.TreeJson)
 }

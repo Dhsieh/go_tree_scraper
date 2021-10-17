@@ -1,12 +1,17 @@
 package bingscraper
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
+	"image"
+	"image/jpeg"
 	"strings"
 	"sync"
 	"time"
 
+	"cloud.google.com/go/storage"
 	"github.com/Dhsieh/tree_scraper/data"
 	"github.com/Dhsieh/tree_scraper/utils"
 	"github.com/gocolly/colly"
@@ -21,6 +26,10 @@ func Setup(downloadPath string) *BingScraper {
 
 func CreateScraper(path string, jsonMap map[string]data.TreeJson, images int, numRoutines int) BingScraper {
 	return BingScraper{downloadPath: path, treeJsonMap: jsonMap, images: images, counter: 0, numRoutines: numRoutines}
+}
+
+func TestString() string {
+	return "This is a test"
 }
 
 // Scraper to scrape images from bing
@@ -50,23 +59,44 @@ func (b BingScraper) ScrapeImages(input interface{}) {
 }
 
 func (b BingScraper) scrapeImages(url string) []string {
-	fmt.Printf("Scraping %s", url)
+	fmt.Printf("Scraping %s\n", url)
 	c := colly.NewCollector()
+	noMUrl := 0
 	var urls []string
+
+	ulCounter := 0
+
+	c.OnResponse(func(r *colly.Response) {
+		fmt.Println(string(r.Body))
+	})
 
 	c.OnHTML("li", func(e *colly.HTMLElement) {
 		tag := e.ChildAttr("a", "m")
 		var result map[string]interface{}
 		json.Unmarshal([]byte(tag), &result)
+		ulCounter++
 
 		murl, ok := result["murl"]
 		if ok {
 			urls = append(urls, murl.(string))
+		} else {
+			noMUrl++
 		}
 	})
 
 	c.Visit(url)
+	fmt.Printf("%d urls did not have a murl\n", noMUrl)
+	fmt.Printf("ul counter is %d\n", ulCounter)
 	return b.checkUrls(urls, b.images)
+}
+
+func (b BingScraper) ScrapeImagesToGCS(ctx context.Context, keyword string) {
+	url := fmt.Sprintf(bingKeywordPhotoUrl, keyword)
+	urls := b.scrapeImages(url)
+
+	fmt.Printf("The number of urls is %d\n", len(urls))
+	b.downloadImages(ctx, urls, b.downloadPath)
+
 }
 
 // Function to scrape images of a keyword
@@ -216,6 +246,7 @@ func download(in <-chan string, dir string, wg *sync.WaitGroup) {
 			filePath := fmt.Sprintf("%s/%s_%s.jpg", dir, date, id.String())
 
 			err := r.Save(filePath)
+
 			if err != nil {
 				panic(err)
 			}
@@ -223,4 +254,77 @@ func download(in <-chan string, dir string, wg *sync.WaitGroup) {
 
 		c.Visit(url)
 	}
+}
+
+func (b BingScraper) downloadImages(ctx context.Context, urls []string, bucket string) {
+	var workerGroup sync.WaitGroup
+
+	client, err := storage.NewClient(ctx)
+	if err != nil {
+		fmt.Printf("error creating client! %v", err)
+		panic(err)
+	}
+
+	in := make(chan string)
+	for i := 0; i < b.numRoutines; i++ {
+		workerGroup.Add(1)
+		go downloadImage(ctx, client, in, bucket, &workerGroup)
+	}
+
+	for _, url := range urls {
+		in <- url
+	}
+
+	close(in)
+	workerGroup.Wait()
+}
+
+func downloadImage(ctx context.Context, storageClient *storage.Client, in <-chan string, dir string, wg *sync.WaitGroup) {
+	defer wg.Done()
+
+	bucket := storageClient.Bucket(dir)
+
+	for {
+		url, ok := <-in
+		if !ok {
+			break
+		}
+
+		c := colly.NewCollector()
+
+		c.OnResponse(func(r *colly.Response) {
+			date := time.Now().Format("2006_01_02")
+			id := uuid.New()
+			fileName := fmt.Sprintf("download/bing/%s_%s.jpeg", date, id.String())
+			fmt.Printf("fileName is %s\n", fileName)
+			file := bucket.Object(fileName)
+
+			writer := file.NewWriter(ctx)
+			writer.ContentType = "image/jpeg"
+			writer.Name = fileName
+
+			img, _, err := image.Decode(bytes.NewReader(r.Body))
+			if err != nil {
+				fmt.Printf("Error decoding byte array to image! %v\n", err)
+				panic(err)
+			}
+
+			if err := jpeg.Encode(writer, img, nil); err != nil {
+				fmt.Printf("Error writing file: %s!", fileName)
+				panic(err)
+			}
+
+			if err := writer.Close(); err != nil {
+				fmt.Printf("Error closing writer %v!", err)
+				panic(err)
+			}
+
+		})
+
+		c.Visit(url)
+	}
+}
+
+func (b BingScraper) String() string {
+	return fmt.Sprintf("downloadPath: %s\ntreeJsonMap: %v\nNumber of Images: %d\nNumber of Routines %d\nCounter %d", b.downloadPath, b.treeJsonMap, b.images, b.numRoutines, b.counter)
 }
