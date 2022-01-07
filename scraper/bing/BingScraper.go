@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"image"
 	"image/jpeg"
+	"io/ioutil"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -16,6 +18,7 @@ import (
 	"github.com/Dhsieh/tree_scraper/utils"
 	"github.com/gocolly/colly"
 	"github.com/google/uuid"
+	"google.golang.org/api/iterator"
 )
 
 // Create a BingScraper struct
@@ -62,23 +65,22 @@ func (b BingScraper) scrapeImages(url string) []string {
 	fmt.Printf("Scraping %s\n", url)
 	c := colly.NewCollector()
 	noMUrl := 0
+	validMUrl := 0
 	var urls []string
 
-	ulCounter := 0
-
-	c.OnResponse(func(r *colly.Response) {
-		fmt.Println(string(r.Body))
-	})
+	//c.OnResponse(func(r *colly.Response) {
+	//	fmt.Println(string(r.Body))
+	//})
 
 	c.OnHTML("li", func(e *colly.HTMLElement) {
 		tag := e.ChildAttr("a", "m")
 		var result map[string]interface{}
 		json.Unmarshal([]byte(tag), &result)
-		ulCounter++
 
 		murl, ok := result["murl"]
 		if ok {
 			urls = append(urls, murl.(string))
+			validMUrl++
 		} else {
 			noMUrl++
 		}
@@ -86,30 +88,39 @@ func (b BingScraper) scrapeImages(url string) []string {
 
 	c.Visit(url)
 	fmt.Printf("%d urls did not have a murl\n", noMUrl)
-	fmt.Printf("ul counter is %d\n", ulCounter)
+	fmt.Printf("valid murl is %d\n", validMUrl)
 	return b.checkUrls(urls, b.images)
 }
 
+// Scrape images and then store them into GCS
 func (b BingScraper) ScrapeImagesToGCS(ctx context.Context, keyword string) {
-	url := fmt.Sprintf(bingKeywordPhotoUrl, keyword)
-	urls := b.scrapeImages(url)
+	client, err := storage.NewClient(ctx)
+	if err != nil {
+		panic(err)
+	}
+	index := getIndex(ctx, keyword, client, b.downloadPath)
+	urls, index := createUrls(keyword, 4, index)
+	writeIndex(ctx, client, index, b.downloadPath, "index/indexfile.txt")
+	allUrls := b.getAllImageUrls(urls)
+
+	fmt.Printf("The urls to scrape is %s\n", allUrls)
 
 	fmt.Printf("The number of urls is %d\n", len(urls))
-	b.downloadImages(ctx, urls, b.downloadPath)
-
+	b.downloadImages(ctx, allUrls, b.downloadPath)
 }
 
 // Function to scrape images of a keyword
 func (b BingScraper) ScrapeKeywordImages(keyword string) {
-	url := fmt.Sprintf(bingKeywordPhotoUrl, keyword)
-	urls := b.scrapeImages(url)
+	urls, _ := createUrls(keyword, 3, 0)
+	fmt.Printf("all bing urls are %s", urls)
+	allUrls := b.getAllImageUrls(urls)
 
 	dirName := fmt.Sprintf("%s/%s", b.downloadPath, "trees")
 	utils.CreateDirectory(dirName)
 
 	fmt.Printf("Downloading %d images into %s \n", b.images, dirName)
 
-	b.downloadImageList(urls, dirName)
+	b.downloadImageList(allUrls, dirName)
 }
 
 func (b BingScraper) ScrapeTreeDatas(treeSlice []data.TreeJson) {
@@ -206,6 +217,18 @@ func (b BingScraper) checkUrls(urls []string, numImages int) []string {
 	return validJPEGUrls
 }
 
+func (b BingScraper) getAllImageUrls(urls []string) []string {
+	var allUrls []string
+
+	for _, bingUrl := range urls {
+		imageUrls := b.scrapeImages(bingUrl)
+		fmt.Printf("%s has %d urls\n", bingUrl, len(imageUrls))
+		allUrls = append(allUrls, imageUrls...)
+	}
+
+	return allUrls
+}
+
 // This could also be changed to use channels and go routines
 // Given a list of bing urls, download images from it.
 // use random string generator to give each image a unique name.
@@ -256,6 +279,7 @@ func download(in <-chan string, dir string, wg *sync.WaitGroup) {
 	}
 }
 
+// Download images using a web service and use channels to parrallelize the images
 func (b BingScraper) downloadImages(ctx context.Context, urls []string, bucket string) {
 	var workerGroup sync.WaitGroup
 
@@ -279,6 +303,7 @@ func (b BingScraper) downloadImages(ctx context.Context, urls []string, bucket s
 	workerGroup.Wait()
 }
 
+// download an image with a single channel
 func downloadImage(ctx context.Context, storageClient *storage.Client, in <-chan string, dir string, wg *sync.WaitGroup) {
 	defer wg.Done()
 
@@ -296,7 +321,7 @@ func downloadImage(ctx context.Context, storageClient *storage.Client, in <-chan
 			date := time.Now().Format("2006_01_02")
 			id := uuid.New()
 			fileName := fmt.Sprintf("download/bing/%s_%s.jpeg", date, id.String())
-			fmt.Printf("fileName is %s\n", fileName)
+			// fmt.Printf("fileName is %s\n", fileName)
 			file := bucket.Object(fileName)
 
 			writer := file.NewWriter(ctx)
@@ -322,6 +347,85 @@ func downloadImage(ctx context.Context, storageClient *storage.Client, in <-chan
 		})
 
 		c.Visit(url)
+	}
+}
+
+// Create a list of urls where each url will contain 35 images
+func createUrls(keyword string, numUrls int, index int) ([]string, int) {
+	var urls []string
+	for i := 0; i < numUrls; i, index = i+1, index+1 {
+		newUrl := fmt.Sprintf(bingKeywordPhotoNumberUrl, keyword, index*35+1)
+		urls = append(urls, newUrl)
+	}
+	return urls, index
+}
+
+// Read index file to see where to start when creating Bing urls
+func getIndex(ctx context.Context, keyword string, storageClient *storage.Client, dir string) int {
+	fmt.Printf("dir is %s\n", dir)
+	bucket := storageClient.Bucket(dir)
+
+	var indexFile *storage.ObjectHandle
+	index := 0
+
+	it := bucket.Objects(ctx, nil)
+	for {
+		attrs, err := it.Next()
+		if err == iterator.Done {
+			fmt.Println("Could not find the indexfile!")
+			break
+		}
+		if err != nil {
+			fmt.Printf("Bucket(%q).Objects: %v", dir, err)
+		}
+		if strings.Contains(attrs.Name, "indexfile.txt") {
+			fmt.Printf("File name is %s\n", attrs.Name)
+			indexFile = bucket.Object("index/indexfile.txt")
+			//break once the correct file is found.
+			break
+		}
+	}
+
+	if indexFile == nil {
+		fmt.Println("There was no index file!")
+	} else {
+		fmt.Println("Reading file contents now!")
+		reader, err := indexFile.NewReader(ctx)
+		if err != nil {
+			fmt.Println(err)
+			panic(err)
+		}
+		defer reader.Close()
+
+		fileContents, err := ioutil.ReadAll(reader)
+		if err != nil {
+			fmt.Println(err)
+			panic(err)
+		}
+
+		index, err = strconv.Atoi(string(fileContents))
+		fmt.Printf("Index is %d\n", index)
+	}
+
+	// default value is 0
+	return index
+}
+
+func writeIndex(ctx context.Context, storageClient *storage.Client, index int, dir string, file string) {
+	bucket := storageClient.Bucket(dir)
+	fmt.Printf("Writing to file %s\n", file)
+	indexFile := bucket.Object(file)
+	writer := indexFile.NewWriter(ctx)
+	writer.ContentType = "text/plain"
+
+	if _, err := writer.Write([]byte(strconv.Itoa(index))); err != nil {
+		fmt.Printf("createFile: unable to write data to bucket %q, file %q: %v\n", dir, file, err)
+		panic(err)
+	}
+
+	if err := writer.Close(); err != nil {
+		fmt.Printf("Could not close file!\n")
+		panic(err)
 	}
 }
 
