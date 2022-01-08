@@ -61,16 +61,14 @@ func (b BingScraper) ScrapeImages(input interface{}) {
 	}
 }
 
+// Get all the image urls from one bing url
+// image urls are from the li tags of the bing url
 func (b BingScraper) scrapeImages(url string) []string {
 	fmt.Printf("Scraping %s\n", url)
 	c := colly.NewCollector()
 	noMUrl := 0
 	validMUrl := 0
 	var urls []string
-
-	//c.OnResponse(func(r *colly.Response) {
-	//	fmt.Println(string(r.Body))
-	//})
 
 	c.OnHTML("li", func(e *colly.HTMLElement) {
 		tag := e.ChildAttr("a", "m")
@@ -93,17 +91,19 @@ func (b BingScraper) scrapeImages(url string) []string {
 }
 
 // Scrape images and then store them into GCS
+// Create bing urls and download the images from those urls
+// bing urls are generated based on an index from a file in GCS
 func (b BingScraper) ScrapeImagesToGCS(ctx context.Context, keyword string) {
 	client, err := storage.NewClient(ctx)
 	if err != nil {
 		panic(err)
 	}
-	index := getIndex(ctx, keyword, client, b.downloadPath)
-	urls, index := createUrls(keyword, 4, index)
-	writeIndex(ctx, client, index, b.downloadPath, "index/indexfile.txt")
-	allUrls := b.getAllImageUrls(urls)
 
-	fmt.Printf("The urls to scrape is %s\n", allUrls)
+	bucket := client.Bucket(b.downloadPath)
+	index := getIndex(ctx, keyword, bucket)
+	urls, index := createUrls(keyword, 4, index)
+	writeIndex(ctx, bucket, index, b.downloadPath, "index/indexfile.txt")
+	allUrls := b.getAllImageUrls(urls)
 
 	fmt.Printf("The number of urls is %d\n", len(urls))
 	b.downloadImages(ctx, allUrls, b.downloadPath)
@@ -123,6 +123,7 @@ func (b BingScraper) ScrapeKeywordImages(keyword string) {
 	b.downloadImageList(allUrls, dirName)
 }
 
+// Scrape from bugwood
 func (b BingScraper) ScrapeTreeDatas(treeSlice []data.TreeJson) {
 	var waitGroup sync.WaitGroup
 	in := make(chan data.TreeJson, b.numRoutines*4)
@@ -217,6 +218,7 @@ func (b BingScraper) checkUrls(urls []string, numImages int) []string {
 	return validJPEGUrls
 }
 
+// Grab all image urls from the bing urls
 func (b BingScraper) getAllImageUrls(urls []string) []string {
 	var allUrls []string
 
@@ -303,7 +305,7 @@ func (b BingScraper) downloadImages(ctx context.Context, urls []string, bucket s
 	workerGroup.Wait()
 }
 
-// download an image with a single channel
+// download an image in a single channel
 func downloadImage(ctx context.Context, storageClient *storage.Client, in <-chan string, dir string, wg *sync.WaitGroup) {
 	defer wg.Done()
 
@@ -318,15 +320,16 @@ func downloadImage(ctx context.Context, storageClient *storage.Client, in <-chan
 		c := colly.NewCollector()
 
 		c.OnResponse(func(r *colly.Response) {
+			//date format: YYYY_MM_DD
 			date := time.Now().Format("2006_01_02")
 			id := uuid.New()
 			fileName := fmt.Sprintf("download/bing/%s_%s.jpeg", date, id.String())
-			// fmt.Printf("fileName is %s\n", fileName)
 			file := bucket.Object(fileName)
 
 			writer := file.NewWriter(ctx)
 			writer.ContentType = "image/jpeg"
 			writer.Name = fileName
+			defer writer.Close()
 
 			img, _, err := image.Decode(bytes.NewReader(r.Body))
 			if err != nil {
@@ -361,14 +364,15 @@ func createUrls(keyword string, numUrls int, index int) ([]string, int) {
 }
 
 // Read index file to see where to start when creating Bing urls
-func getIndex(ctx context.Context, keyword string, storageClient *storage.Client, dir string) int {
-	fmt.Printf("dir is %s\n", dir)
-	bucket := storageClient.Bucket(dir)
+func getIndex(ctx context.Context, keyword string, bucket *storage.BucketHandle) int {
 
+	attrs, _ := bucket.Attrs(ctx)
+	dir := attrs.Name
 	var indexFile *storage.ObjectHandle
 	index := 0
 
 	it := bucket.Objects(ctx, nil)
+	// Find the indexfile to see if it exists
 	for {
 		attrs, err := it.Next()
 		if err == iterator.Done {
@@ -389,6 +393,7 @@ func getIndex(ctx context.Context, keyword string, storageClient *storage.Client
 	if indexFile == nil {
 		fmt.Println("There was no index file!")
 	} else {
+		// Read the contents of the file and return
 		fmt.Println("Reading file contents now!")
 		reader, err := indexFile.NewReader(ctx)
 		if err != nil {
@@ -411,8 +416,9 @@ func getIndex(ctx context.Context, keyword string, storageClient *storage.Client
 	return index
 }
 
-func writeIndex(ctx context.Context, storageClient *storage.Client, index int, dir string, file string) {
-	bucket := storageClient.Bucket(dir)
+// Write index file to a file in GCS
+func writeIndex(ctx context.Context, bucket *storage.BucketHandle, index int, dir string, file string) {
+
 	fmt.Printf("Writing to file %s\n", file)
 	indexFile := bucket.Object(file)
 	writer := indexFile.NewWriter(ctx)
@@ -429,6 +435,7 @@ func writeIndex(ctx context.Context, storageClient *storage.Client, index int, d
 	}
 }
 
+// Print BingScraper struct
 func (b BingScraper) String() string {
 	return fmt.Sprintf("downloadPath: %s\ntreeJsonMap: %v\nNumber of Images: %d\nNumber of Routines %d\nCounter %d", b.downloadPath, b.treeJsonMap, b.images, b.numRoutines, b.counter)
 }

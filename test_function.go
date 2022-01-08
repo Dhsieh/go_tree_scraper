@@ -6,27 +6,14 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	"cloud.google.com/go/functions/metadata"
 	"cloud.google.com/go/storage"
 	treeConfig "github.com/Dhsieh/tree_scraper/config"
 	"github.com/Dhsieh/tree_scraper/data"
-	"github.com/Dhsieh/tree_scraper/scraper/bing"
 	"github.com/spf13/viper"
 )
 
 func Test(ctx context.Context, event data.GCSEvent) error {
 	viper.SetConfigType("yaml")
-
-	meta, err := metadata.FromContext(ctx)
-	if err != nil {
-		return fmt.Errorf("metadata.fromContext: %v", err)
-	}
-
-	fmt.Printf("Event ID: %v\n", meta.EventID)
-	fmt.Printf("Bucket %v\n", event.Bucket)
-	fmt.Printf("Id %v\n", event.ID)
-	fmt.Printf("Name %v\n", event.Name)
-	fmt.Printf("Test function returns %s\n", bingscraper.TestString())
 
 	client, err := storage.NewClient(ctx)
 	if err != nil {
@@ -46,7 +33,7 @@ func Test(ctx context.Context, event data.GCSEvent) error {
 	readFile, err := ioutil.ReadAll(reader)
 
 	if err != nil {
-		return fmt.Errorf("Erro reading file %v %v\n", event.Name, err)
+		return fmt.Errorf("Error reading file %v %v\n", event.Name, err)
 	}
 
 	viper.ReadConfig(bytes.NewBuffer(readFile))
