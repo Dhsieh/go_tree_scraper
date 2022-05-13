@@ -27,8 +27,8 @@ func Setup(downloadPath string) *BingScraper {
 	return &BingScraper{downloadPath: newDownloadPath, counter: 0}
 }
 
-func CreateScraper(path string, jsonMap map[string]data.TreeJson, images int, numRoutines int) BingScraper {
-	return BingScraper{downloadPath: path, treeJsonMap: jsonMap, images: images, counter: 0, numRoutines: numRoutines}
+func CreateScraper(path string, jsonMap map[string]data.TreeJson, images int, numRoutines int, indexFile string) BingScraper {
+	return BingScraper{downloadPath: path, treeJsonMap: jsonMap, images: images, counter: 0, numRoutines: numRoutines, indexFile: indexFile}
 }
 
 // Scraper to scrape images from bing
@@ -43,6 +43,7 @@ type BingScraper struct {
 	images       int
 	numRoutines  int
 	counter      int
+	indexFile    string
 }
 
 // Determine how to get the images
@@ -103,7 +104,7 @@ func (b BingScraper) ScrapeImagesToGCS(ctx context.Context, keyword string) {
 	bucket := client.Bucket(b.downloadPath)
 	index := getIndex(ctx, keyword, bucket)
 	urls, index := createUrls(keyword, 4, index)
-	writeIndex(ctx, bucket, index, b.downloadPath, "index/indexfile.txt")
+	writeIndex(ctx, bucket, index, b.downloadPath, b.indexFile)
 	allUrls := b.getAllImageUrls(urls)
 
 	fmt.Printf("The number of urls is %d\n", len(urls))

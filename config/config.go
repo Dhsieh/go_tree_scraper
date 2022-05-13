@@ -13,7 +13,7 @@ import (
 // DownloadPath: 	String  	folder to scrape and download the images to
 // Images: 			int 		number of images to scrape per species
 // NumRoutines: 	int 	 	number of Go routines to create
-// IndexFile 		strings   	Index file to use 		strings   	Index file to use 		strings   	Index file to use 		strings   	Index file to use
+// IndexFile 		string  	Index file to use
 // TODO: Add more config options
 type Configuration struct {
 	Site         string
@@ -35,13 +35,13 @@ func (c Configuration) GetScraper(jsonPath string) scraper.Scraper {
 		return forestryscraper.CreateScraper(c.getFullPath(), Setup(jsonPath))
 	} else {
 		fmt.Println("Scraping bing")
-		bing := bingscraper.CreateScraper(c.getFullPath(), Setup(jsonPath), c.Images, c.NumRoutines)
+		bing := bingscraper.CreateScraper(c.getFullPath(), Setup(jsonPath), c.Images, c.NumRoutines, c.IndexFile)
 		return bing
 	}
 }
 
 func (c Configuration) CreateBingScraper() bingscraper.BingScraper {
-	return bingscraper.CreateScraper(c.DownloadPath, nil, c.Images, c.NumRoutines)
+	return bingscraper.CreateScraper(c.DownloadPath, nil, c.Images, c.NumRoutines, c.IndexFile)
 }
 
 func (c Configuration) String() string {
