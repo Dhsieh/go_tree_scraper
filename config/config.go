@@ -13,6 +13,8 @@ import (
 // DownloadPath: 	String  	folder to scrape and download the images to
 // Images: 			int 		number of images to scrape per species
 // NumRoutines: 	int 	 	number of Go routines to create
+// IndexFile 		strings   	Index file to use 		strings   	Index file to use 		strings   	Index file to use 		strings   	Index file to use
+// TODO: Add more config options
 type Configuration struct {
 	Site         string
 	Keyword      string
@@ -20,6 +22,7 @@ type Configuration struct {
 	DownloadPath string
 	Images       int
 	NumRoutines  int
+	IndexFile    string
 }
 
 func (c Configuration) getFullPath() string {

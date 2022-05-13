@@ -31,10 +31,6 @@ func CreateScraper(path string, jsonMap map[string]data.TreeJson, images int, nu
 	return BingScraper{downloadPath: path, treeJsonMap: jsonMap, images: images, counter: 0, numRoutines: numRoutines}
 }
 
-func TestString() string {
-	return "This is a test"
-}
-
 // Scraper to scrape images from bing
 // downloadPath: 	string 						path to save the images
 // treeJsonMap: 	map[string]data.TreeJson 	map containing all the species to download
@@ -49,6 +45,10 @@ type BingScraper struct {
 	counter      int
 }
 
+// Determine how to get the images
+// There are 2 ways:
+//   1. Keyword: Given a keyword scrape images from searching that keyword
+//   2. TreeData: List of tree species from bugwood website and the images from each page for each species
 func (b BingScraper) ScrapeImages(input interface{}) {
 	switch in := input.(type) {
 	case string:
@@ -93,6 +93,7 @@ func (b BingScraper) scrapeImages(url string) []string {
 // Scrape images and then store them into GCS
 // Create bing urls and download the images from those urls
 // bing urls are generated based on an index from a file in GCS
+// TODO make numUrls in writeIndex be a variable
 func (b BingScraper) ScrapeImagesToGCS(ctx context.Context, keyword string) {
 	client, err := storage.NewClient(ctx)
 	if err != nil {
@@ -112,7 +113,6 @@ func (b BingScraper) ScrapeImagesToGCS(ctx context.Context, keyword string) {
 // Function to scrape images of a keyword
 func (b BingScraper) ScrapeKeywordImages(keyword string) {
 	urls, _ := createUrls(keyword, 3, 0)
-	fmt.Printf("all bing urls are %s", urls)
 	allUrls := b.getAllImageUrls(urls)
 
 	dirName := fmt.Sprintf("%s/%s", b.downloadPath, "trees")
@@ -224,7 +224,6 @@ func (b BingScraper) getAllImageUrls(urls []string) []string {
 
 	for _, bingUrl := range urls {
 		imageUrls := b.scrapeImages(bingUrl)
-		fmt.Printf("%s has %d urls\n", bingUrl, len(imageUrls))
 		allUrls = append(allUrls, imageUrls...)
 	}
 
@@ -282,6 +281,8 @@ func download(in <-chan string, dir string, wg *sync.WaitGroup) {
 }
 
 // Download images using a web service and use channels to parrallelize the images
+// urls: 	List of urls
+// bucket:  Bucket to download images to
 func (b BingScraper) downloadImages(ctx context.Context, urls []string, bucket string) {
 	var workerGroup sync.WaitGroup
 
@@ -306,6 +307,10 @@ func (b BingScraper) downloadImages(ctx context.Context, urls []string, bucket s
 }
 
 // download an image in a single channel
+// TODO: Change name of the files to be less random
+// storageClient: GCS storageClient
+// in: 			  channel of urls to read from
+// dir: 		  bucket in GCS
 func downloadImage(ctx context.Context, storageClient *storage.Client, in <-chan string, dir string, wg *sync.WaitGroup) {
 	defer wg.Done()
 
@@ -354,6 +359,9 @@ func downloadImage(ctx context.Context, storageClient *storage.Client, in <-chan
 }
 
 // Create a list of urls where each url will contain 35 images
+// keyword: Keyword to place into URL
+// numUrls: number of urls to scrape on each page
+// index: number of images on the url, the next page will be index*35 + 1
 func createUrls(keyword string, numUrls int, index int) ([]string, int) {
 	var urls []string
 	for i := 0; i < numUrls; i, index = i+1, index+1 {
