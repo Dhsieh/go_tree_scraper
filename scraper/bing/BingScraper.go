@@ -27,8 +27,8 @@ func Setup(downloadPath string) *BingScraper {
 	return &BingScraper{downloadPath: newDownloadPath, counter: 0}
 }
 
-func CreateScraper(path string, jsonMap map[string]data.TreeJson, images int, numRoutines int, indexFile string) BingScraper {
-	return BingScraper{downloadPath: path, treeJsonMap: jsonMap, images: images, counter: 0, numRoutines: numRoutines, indexFile: indexFile}
+func CreateScraper(path string, jsonMap map[string]data.TreeJson, images int, numRoutines int, indexFile string, numUrls int) BingScraper {
+	return BingScraper{downloadPath: path, treeJsonMap: jsonMap, images: images, counter: 0, numRoutines: numRoutines, indexFile: indexFile, numUrls: numUrls}
 }
 
 // Scraper to scrape images from bing
@@ -37,6 +37,8 @@ func CreateScraper(path string, jsonMap map[string]data.TreeJson, images int, nu
 // images: 			int 						number of images to scrape per species
 // numRoutines: 	int 						number of go routines to create
 // counter: 		int 						way to track number of images saved
+// indexFile 	 	string 						path of file to read and update index
+// numUrls   		int 						number of search urls to look for images
 type BingScraper struct {
 	downloadPath string
 	treeJsonMap  map[string]data.TreeJson
@@ -44,6 +46,7 @@ type BingScraper struct {
 	numRoutines  int
 	counter      int
 	indexFile    string
+	numUrls      int
 }
 
 // Determine how to get the images
@@ -94,7 +97,6 @@ func (b BingScraper) scrapeImages(url string) []string {
 // Scrape images and then store them into GCS
 // Create bing urls and download the images from those urls
 // bing urls are generated based on an index from a file in GCS
-// TODO make numUrls in writeIndex be a variable
 func (b BingScraper) ScrapeImagesToGCS(ctx context.Context, keyword string) {
 	client, err := storage.NewClient(ctx)
 	if err != nil {
@@ -103,7 +105,7 @@ func (b BingScraper) ScrapeImagesToGCS(ctx context.Context, keyword string) {
 
 	bucket := client.Bucket(b.downloadPath)
 	index := getIndex(ctx, keyword, bucket)
-	urls, index := createUrls(keyword, 4, index)
+	urls, index := createUrls(keyword, b.numUrls, index)
 	writeIndex(ctx, bucket, index, b.downloadPath, b.indexFile)
 	allUrls := b.getAllImageUrls(urls)
 

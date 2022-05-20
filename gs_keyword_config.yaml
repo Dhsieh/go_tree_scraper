@@ -4,3 +4,4 @@ DownloadPath: "derek_hsieh_ml"
 Images: 100
 NumRoutines: 8
 IndexFile: "index/indexfile.txt"
+NumUrls: 4

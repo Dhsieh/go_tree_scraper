@@ -23,6 +23,7 @@ type Configuration struct {
 	Images       int
 	NumRoutines  int
 	IndexFile    string
+	NumUrls      int
 }
 
 func (c Configuration) getFullPath() string {
@@ -35,15 +36,15 @@ func (c Configuration) GetScraper(jsonPath string) scraper.Scraper {
 		return forestryscraper.CreateScraper(c.getFullPath(), Setup(jsonPath))
 	} else {
 		fmt.Println("Scraping bing")
-		bing := bingscraper.CreateScraper(c.getFullPath(), Setup(jsonPath), c.Images, c.NumRoutines, c.IndexFile)
+		bing := bingscraper.CreateScraper(c.getFullPath(), Setup(jsonPath), c.Images, c.NumRoutines, c.IndexFile, c.NumUrls)
 		return bing
 	}
 }
 
 func (c Configuration) CreateBingScraper() bingscraper.BingScraper {
-	return bingscraper.CreateScraper(c.DownloadPath, nil, c.Images, c.NumRoutines, c.IndexFile)
+	return bingscraper.CreateScraper(c.DownloadPath, nil, c.Images, c.NumRoutines, c.IndexFile, c.NumUrls)
 }
 
 func (c Configuration) String() string {
-	return fmt.Sprintf("Site: %s\nKeyword: %s\nSpecies: %s\nDownloadPath: %s\nImages: %d\nNumRoutines: %d\n", c.Site, c.Keyword, c.Species, c.DownloadPath, c.Images, c.NumRoutines)
+	return fmt.Sprintf("Site: %s\nKeyword: %s\nSpecies: %s\nDownloadPath: %s\nImages: %d\nNumRoutines: %d\nIndexFile: %s\n", c.Site, c.Keyword, c.Species, c.DownloadPath, c.Images, c.NumRoutines, c.IndexFile)
 }
